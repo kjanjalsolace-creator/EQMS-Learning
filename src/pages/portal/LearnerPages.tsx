@@ -93,15 +93,16 @@ export function CoursePlayerPage() {
   const { enrolments, updateEnrolment, addCertificate, addNotification } = useAppDataData();
   const course = COURSES.find((c) => c.slug === slug);
 
-  if (!user) return <Navigate to="/login" />;
-  if (!course) return <Navigate to="/portal/my-learning" />;
-
-  const enrolment = enrolments.find((e) => e.userId === user.id && e.courseId === course.id);
   const [currentModuleIdx, setCurrentModuleIdx] = useState(0);
   const [currentLessonIdx, setCurrentLessonIdx] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [showResults, setShowResults] = useState(false);
+
+  if (!user) return <Navigate to="/login" />;
+  if (!course) return <Navigate to="/portal/my-learning" />;
+
+  const enrolment = enrolments.find((e) => e.userId === user.id && e.courseId === course.id);
 
   const currentModule = course.modules[currentModuleIdx];
   const currentLesson = currentModule?.lessons[currentLessonIdx];
