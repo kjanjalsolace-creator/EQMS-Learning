@@ -260,7 +260,7 @@ export function OrgReportsPage() {
                       <td key={c.id} className="px-4 py-3 text-center">
                         {completed ? <div className="w-6 h-6 bg-success rounded mx-auto flex items-center justify-center"><CheckCircle2 className="w-4 h-4 text-white" /></div>
                           : assigned ? <div className="w-6 h-6 bg-warning rounded mx-auto" />
-                          : <div className="w-6 h-6 bg-bg-light rounded mx-auto" />}
+                            : <div className="w-6 h-6 bg-bg-light rounded mx-auto" />}
                       </td>
                     );
                   })}
