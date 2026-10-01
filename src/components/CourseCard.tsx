@@ -1,9 +1,11 @@
-import { Link } from 'react-router-dom';
-import { Star, Clock, ShoppingCart, Heart, CheckCircle2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Star, Clock, ShoppingCart, Heart, CheckCircle2, Play } from 'lucide-react';
 import type { Course } from '@/types';
 import { useCartStore } from '@/context/CartContext';
 import { useWishlistStore } from '@/context/WishlistContext';
 import { useToastStore } from '@/context/ToastContext';
+import { useAuthStore } from '@/context/AuthContext';
+import { useAppDataStore } from '@/context/AppDataContext';
 import { Badge } from '@/components/ui/Card';
 import { FALLBACK_IMAGE } from '@/data/assets';
 
@@ -12,10 +14,15 @@ interface CourseCardProps {
 }
 
 export function CourseCard({ course }: CourseCardProps) {
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const { enrolments } = useAppDataStore();
   const { addItem } = useCartStore();
   const { toggle, isWishlisted } = useWishlistStore();
   const { show } = useToastStore();
   const wished = isWishlisted(course.id);
+
+  const isEnrolled = !!(user && enrolments.some((e) => e.userId === user.id && e.courseId === course.id));
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -51,6 +58,11 @@ export function CourseCard({ course }: CourseCardProps) {
           onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
         />
         <div className="absolute top-2 left-2 flex flex-col gap-1">
+          {isEnrolled && (
+            <Badge className="bg-emerald-600 text-white font-semibold flex items-center gap-1 shadow-sm">
+              <CheckCircle2 className="w-3 h-3" /> Enrolled
+            </Badge>
+          )}
           {course.cpdApproved && (
             <Badge variant="primary" className="bg-primary/90 text-white">CPD</Badge>
           )}
@@ -86,21 +98,43 @@ export function CourseCard({ course }: CourseCardProps) {
             {course.duration}
           </span>
         </div>
-        <div className="flex items-center justify-between gap-2 pt-3 border-t border-border">
-          <div className="flex items-baseline gap-1">
-            {course.salePrice && (
-              <span className="text-xs text-muted line-through">£{course.price}</span>
-            )}
-            <span className="text-lg font-bold text-primary">£{displayPrice}</span>
+
+        {isEnrolled ? (
+          <div className="flex items-center justify-between gap-2 pt-3 border-t border-border">
+            <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Active Access</span>
+            </div>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigate(`/portal/player/${course.slug}`);
+              }}
+              className="px-3 py-1.5 rounded-button bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+              aria-label="Start Learning"
+            >
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Start</span>
+            </button>
           </div>
-          <button
-            onClick={handleAddToCart}
-            className="p-2 rounded-button bg-primary text-white hover:bg-primary-hover transition-colors"
-            aria-label="Add to cart"
-          >
-            <ShoppingCart className="w-4 h-4" />
-          </button>
-        </div>
+        ) : (
+          <div className="flex items-center justify-between gap-2 pt-3 border-t border-border">
+            <div className="flex items-baseline gap-1">
+              {course.salePrice && (
+                <span className="text-xs text-muted line-through">£{course.price}</span>
+              )}
+              <span className="text-lg font-bold text-primary">£{displayPrice}</span>
+            </div>
+            <button
+              onClick={handleAddToCart}
+              className="p-2 rounded-button bg-primary text-white hover:bg-primary-hover transition-colors"
+              aria-label="Add to cart"
+            >
+              <ShoppingCart className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </Link>
   );

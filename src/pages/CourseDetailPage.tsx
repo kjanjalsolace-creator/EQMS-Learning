@@ -14,6 +14,7 @@ import { useCartStore } from '@/context/CartContext';
 import { useWishlistStore } from '@/context/WishlistContext';
 import { useToastStore } from '@/context/ToastContext';
 import { useAuthStore } from '@/context/AuthContext';
+import { useAppDataStore } from '@/context/AppDataContext';
 import { FALLBACK_IMAGE } from '@/data/assets';
 
 export function CourseDetailPage() {
@@ -24,8 +25,10 @@ export function CourseDetailPage() {
   const { toggle, isWishlisted } = useWishlistStore();
   const { show } = useToastStore();
   const { user } = useAuthStore();
+  const { enrolments } = useAppDataStore();
   const [quantity, setQuantity] = useState(1);
   const [teamPurchase, setTeamPurchase] = useState(false);
+  const [showTeamPurchaseOptions, setShowTeamPurchaseOptions] = useState(false);
   const [assigneeEmails, setAssigneeEmails] = useState<string[]>([]);
   const [emailInput, setEmailInput] = useState('');
 
@@ -43,6 +46,9 @@ export function CourseDetailPage() {
   const related = ALL_COURSES.filter((c) => c.category === course.category && c.id !== course.id).slice(0, 3);
   const wished = isWishlisted(course.id);
   const displayPrice = course.salePrice || course.price;
+
+  const userEnrolment = user ? enrolments.find((e) => e.userId === user.id && e.courseId === course.id) : undefined;
+  const isEnrolled = !!userEnrolment;
 
   const ratingBreakdown = [5, 4, 3, 2, 1].map((star) => {
     const count = courseReviews.filter((r) => r.rating === star).length;
@@ -89,7 +95,12 @@ export function CourseDetailPage() {
           <Breadcrumbs items={[{ label: 'Home', to: '/' }, { label: 'Courses', to: '/courses' }, { label: course.title }]} />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6">
             <div className="lg:col-span-2">
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                {isEnrolled && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-sm">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Enrolled & Active
+                  </span>
+                )}
                 <Badge variant="primary">{course.category}</Badge>
                 <Badge variant="neutral">{course.level}</Badge>
                 {course.cpdApproved && <Badge variant="success">CPD Approved</Badge>}
@@ -292,119 +303,212 @@ export function CourseDetailPage() {
           <div className="lg:col-span-1">
             <div className="sticky top-24">
               <Card className="p-6">
-                <div className="flex items-baseline gap-2 mb-4">
-                  {course.salePrice && (
-                    <span className="text-lg text-muted line-through">£{course.price}</span>
-                  )}
-                  <span className="text-3xl font-bold text-primary">£{displayPrice}</span>
-                  <span className="text-sm text-muted">+ VAT</span>
-                </div>
-
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-body">
-                    <Clock className="w-4 h-4 text-primary" />
-                    Duration: {course.duration}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-body">
-                    <Award className="w-4 h-4 text-primary" />
-                    Certificate: {course.certificateValidity}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-body">
-                    <BarChart3 className="w-4 h-4 text-primary" />
-                    Pass mark: {course.passMark}%
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-body">
-                    <BookOpen className="w-4 h-4 text-primary" />
-                    {totalLessons} lessons
-                  </div>
-                </div>
-
-                {/* Team Purchase Toggle */}
-                <div className="border-t border-border pt-4 mb-4">
-                  <label className="flex items-center gap-2 cursor-pointer mb-3">
-                    <input
-                      type="checkbox"
-                      checked={teamPurchase}
-                      onChange={(e) => setTeamPurchase(e.target.checked)}
-                      className="w-4 h-4 accent-primary"
-                    />
-                    <span className="text-sm font-medium text-heading">Buy for your team</span>
-                  </label>
-
-                  {teamPurchase ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
-                        <input
-                          type="number"
-                          value={quantity}
-                          onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
-                          className="input-base text-center w-20"
-                          min={1}
-                        />
-                        <Button variant="outline" size="sm" onClick={() => setQuantity(quantity + 1)}>+</Button>
+                {isEnrolled && userEnrolment ? (
+                  <div className="space-y-5">
+                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                      <div className="flex items-center gap-2 text-emerald-800 font-bold mb-1">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                        <span>You Own This Course</span>
                       </div>
-                      <div className="text-xs text-muted">
-                        Volume discounts: 5+ (10%), 10+ (15%), 25+ (20%)
+                      <p className="text-xs text-emerald-700">
+                        Full lifetime access, accredited CPD certification, and course player access are active.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-muted">
+                        <span className="font-medium text-heading">Course Progress</span>
+                        <span className="font-bold text-emerald-700">{userEnrolment.progress}% Complete</span>
                       </div>
-                      {quantity > 1 && (
-                        <div>
-                          <label className="text-sm font-medium text-heading block mb-1">Assignee Emails (optional)</label>
-                          <div className="flex gap-2">
-                            <input
-                              type="email"
-                              value={emailInput}
-                              onChange={(e) => setEmailInput(e.target.value)}
-                              placeholder="colleague@company.co.uk"
-                              className="input-base flex-1 text-sm"
-                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addEmail(); } }}
-                            />
-                            <Button variant="secondary" size="sm" onClick={addEmail}>Add</Button>
+                      <ProgressBar value={userEnrolment.progress} className="h-2" />
+                      <p className="text-[11px] text-muted">
+                        Status: <span className="capitalize font-semibold text-heading">{userEnrolment.status.replace('_', ' ')}</span>
+                      </p>
+                    </div>
+
+                    <div className="space-y-3 pt-1">
+                      <Button
+                        variant="primary"
+                        size="lg"
+                        fullWidth
+                        onClick={() => navigate(`/portal/player/${course.slug}`)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 shadow-md flex items-center justify-center gap-2"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                        {userEnrolment.progress > 0 ? 'Continue Learning' : 'Start Course Now'}
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        fullWidth
+                        onClick={() => navigate('/portal/my-learning')}
+                        className="text-xs"
+                      >
+                        <BookOpen className="w-4 h-4 mr-2" />
+                        View in My Learning Portal
+                      </Button>
+                    </div>
+
+                    <div className="pt-4 border-t border-border space-y-3">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          fullWidth
+                          onClick={() => { toggle(course.id); show(wished ? 'info' : 'success', wished ? 'Removed from wishlist' : 'Added to wishlist'); }}
+                        >
+                          <Heart className={`w-4 h-4 ${wished ? 'fill-primary text-primary' : ''}`} />
+                          Wishlist
+                        </Button>
+                        <Button variant="outline" onClick={handleShare}>
+                          <Share2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+
+                      {/* Optional team purchase expansion */}
+                      <button
+                        onClick={() => setShowTeamPurchaseOptions(!showTeamPurchaseOptions)}
+                        className="w-full text-xs text-primary hover:underline text-center block pt-2"
+                      >
+                        {showTeamPurchaseOptions ? 'Hide team purchase options' : '+ Need additional seats for colleagues?'}
+                      </button>
+
+                      {showTeamPurchaseOptions && (
+                        <div className="p-3 bg-bg-light rounded-card text-xs space-y-3 border border-border mt-2">
+                          <p className="font-semibold text-heading">Buy extra licenses for team members:</p>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-primary text-sm">£{displayPrice}</span>
+                            <span className="text-muted">/ seat</span>
                           </div>
-                          {assigneeEmails.length > 0 && (
-                            <div className="mt-2 space-y-1">
-                              {assigneeEmails.map((email) => (
-                                <div key={email} className="flex items-center justify-between bg-bg-light px-3 py-1.5 rounded text-sm">
-                                  {email}
-                                  <button onClick={() => setAssigneeEmails(assigneeEmails.filter((e) => e !== email))} className="text-error">×</button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            fullWidth
+                            onClick={handleAddToCart}
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5 mr-1" />
+                            Add 1 Team Seat to Cart
+                          </Button>
                         </div>
                       )}
                     </div>
-                  ) : null}
-                </div>
-
-                <div className="space-y-2">
-                  <Button variant="primary" size="lg" fullWidth onClick={handleAddToCart}>
-                    <ShoppingCart className="w-4 h-4" />
-                    Add to Cart
-                  </Button>
-                  <Button variant="secondary" size="lg" fullWidth onClick={handleBuyNow}>
-                    Buy Now
-                  </Button>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      fullWidth
-                      onClick={() => { toggle(course.id); show(wished ? 'info' : 'success', wished ? 'Removed from wishlist' : 'Added to wishlist'); }}
-                    >
-                      <Heart className={`w-4 h-4 ${wished ? 'fill-primary text-primary' : ''}`} />
-                      Wishlist
-                    </Button>
-                    <Button variant="outline" onClick={handleShare}>
-                      <Share2 className="w-4 h-4" />
-                    </Button>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-2 mb-4">
+                      {course.salePrice && (
+                        <span className="text-lg text-muted line-through">£{course.price}</span>
+                      )}
+                      <span className="text-3xl font-bold text-primary">£{displayPrice}</span>
+                      <span className="text-sm text-muted">+ VAT</span>
+                    </div>
 
-                {!user && (
-                  <p className="text-xs text-muted text-center mt-4">
-                    <Link to="/login" className="text-primary underline">Sign in</Link> or{' '}
-                    <Link to="/register" className="text-primary underline">register</Link> to purchase
-                  </p>
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center gap-2 text-sm text-body">
+                        <Clock className="w-4 h-4 text-primary" />
+                        Duration: {course.duration}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-body">
+                        <Award className="w-4 h-4 text-primary" />
+                        Certificate: {course.certificateValidity}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-body">
+                        <BarChart3 className="w-4 h-4 text-primary" />
+                        Pass mark: {course.passMark}%
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-body">
+                        <BookOpen className="w-4 h-4 text-primary" />
+                        {totalLessons} lessons
+                      </div>
+                    </div>
+
+                    {/* Team Purchase Toggle */}
+                    <div className="border-t border-border pt-4 mb-4">
+                      <label className="flex items-center gap-2 cursor-pointer mb-3">
+                        <input
+                          type="checkbox"
+                          checked={teamPurchase}
+                          onChange={(e) => setTeamPurchase(e.target.checked)}
+                          className="w-4 h-4 accent-primary"
+                        />
+                        <span className="text-sm font-medium text-heading">Buy for your team</span>
+                      </label>
+
+                      {teamPurchase ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
+                            <input
+                              type="number"
+                              value={quantity}
+                              onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
+                              className="input-base text-center w-20"
+                              min={1}
+                            />
+                            <Button variant="outline" size="sm" onClick={() => setQuantity(quantity + 1)}>+</Button>
+                          </div>
+                          <div className="text-xs text-muted">
+                            Volume discounts: 5+ (10%), 10+ (15%), 25+ (20%)
+                          </div>
+                          {quantity > 1 && (
+                            <div>
+                              <label className="text-sm font-medium text-heading block mb-1">Assignee Emails (optional)</label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="email"
+                                  value={emailInput}
+                                  onChange={(e) => setEmailInput(e.target.value)}
+                                  placeholder="colleague@company.co.uk"
+                                  className="input-base flex-1 text-sm"
+                                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addEmail(); } }}
+                                />
+                                <Button variant="secondary" size="sm" onClick={addEmail}>Add</Button>
+                              </div>
+                              {assigneeEmails.length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                  {assigneeEmails.map((email) => (
+                                    <div key={email} className="flex items-center justify-between bg-bg-light px-3 py-1.5 rounded text-sm">
+                                      {email}
+                                      <button onClick={() => setAssigneeEmails(assigneeEmails.filter((e) => e !== email))} className="text-error">×</button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Button variant="primary" size="lg" fullWidth onClick={handleAddToCart}>
+                        <ShoppingCart className="w-4 h-4" />
+                        Add to Cart
+                      </Button>
+                      <Button variant="secondary" size="lg" fullWidth onClick={handleBuyNow}>
+                        Buy Now
+                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          fullWidth
+                          onClick={() => { toggle(course.id); show(wished ? 'info' : 'success', wished ? 'Removed from wishlist' : 'Added to wishlist'); }}
+                        >
+                          <Heart className={`w-4 h-4 ${wished ? 'fill-primary text-primary' : ''}`} />
+                          Wishlist
+                        </Button>
+                        <Button variant="outline" onClick={handleShare}>
+                          <Share2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {!user && (
+                      <p className="text-xs text-muted text-center mt-4">
+                        <Link to="/login" className="text-primary underline">Sign in</Link> or{' '}
+                        <Link to="/register" className="text-primary underline">register</Link> to purchase
+                      </p>
+                    )}
+                  </>
                 )}
               </Card>
             </div>

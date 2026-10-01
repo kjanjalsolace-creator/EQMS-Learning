@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { useAuthStore } from '@/context/AuthContext';
@@ -20,6 +20,7 @@ const CheckoutPage = lazy(() => import('@/pages/CheckoutPage').then(m => ({ defa
 const CertificateVerifyPage = lazy(() => import('@/pages/CertificateVerifyPage').then(m => ({ default: m.CertificateVerifyPage })));
 
 // Static imports for multi-export modules
+import { ScrollToTop } from '@/components/ScrollToTop';
 import { NotFoundPage, PrivacyPage, TermsPage } from '@/pages/StaticPages';
 import { LoginPage, RegisterPage } from '@/pages/AuthPages';
 import { LearnerDashboard } from '@/pages/portal/LearnerDashboard';
@@ -50,14 +51,26 @@ function Loading() {
 
 function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: UserRole[] }) {
   const { user } = useAuthStore();
-  if (!user) return <Navigate to="/login" />;
-  if (roles && !roles.includes(user.role)) return <Navigate to="/portal" />;
+  const location = useLocation();
+
+  if (!user) {
+    const redirectUrl = location.pathname + location.search;
+    return <Navigate to={`/login?redirect=${encodeURIComponent(redirectUrl)}`} replace />;
+  }
+
+  if (roles && !roles.includes(user.role)) {
+    const fallback = user.role === 'org_admin' ? '/portal/admin' : user.role === 'instructor' ? '/portal/instructor' : user.role === 'super_admin' ? '/portal/superadmin' : '/portal';
+    return <Navigate to={fallback} replace />;
+  }
+
   return <>{children}</>;
 }
+
 
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Suspense fallback={<Loading />}>
         <Routes>
           {/* Public pages with layout */}

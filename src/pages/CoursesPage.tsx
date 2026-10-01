@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Search, SlidersHorizontal, Grid3x3, List, X, Star, Clock, ShoppingCart, Heart } from 'lucide-react';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { Search, SlidersHorizontal, Grid3x3, List, X, Star, Clock, ShoppingCart, Heart, CheckCircle2, Play } from 'lucide-react';
 import { COURSES, CATEGORIES } from '@/data/seed';
 import { CourseCard } from '@/components/CourseCard';
 import { Button } from '@/components/ui/Button';
@@ -11,12 +11,16 @@ import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { useCartStore } from '@/context/CartContext';
 import { useWishlistStore } from '@/context/WishlistContext';
 import { useToastStore } from '@/context/ToastContext';
+import { useAuthStore } from '@/context/AuthContext';
+import { useAppDataStore } from '@/context/AppDataContext';
 import { FALLBACK_IMAGE } from '@/data/assets';
-import { Link } from 'react-router-dom';
 
 const PER_PAGE = 9;
 
 export function CoursesPage() {
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const { enrolments } = useAppDataStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('q') || '');
   const [category, setCategory] = useState('all');
@@ -264,63 +268,103 @@ export function CoursesPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {paginated.map((course) => (
-                  <Link
-                    key={course.id}
-                    to={`/courses/${course.slug}`}
-                    className="card-base group hover:shadow-card-hover transition-all flex flex-col sm:flex-row"
-                  >
-                    <div className="sm:w-64 aspect-[16/9] sm:aspect-auto flex-shrink-0 overflow-hidden">
-                      <img
-                        src={course.thumbnail}
-                        alt={course.title}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
-                      />
-                    </div>
-                    <div className="p-5 flex-1 flex flex-col">
-                      <div className="flex items-center gap-2 text-xs text-muted mb-2">
-                        <span className="font-medium text-primary">{course.category}</span>
-                        <span>•</span>
-                        <span>{course.level}</span>
-                        <span>•</span>
-                        <span>{course.duration}</span>
+                {paginated.map((course) => {
+                  const isEnrolled = !!(user && enrolments.some((e) => e.userId === user.id && e.courseId === course.id));
+                  return (
+                    <Link
+                      key={course.id}
+                      to={`/courses/${course.slug}`}
+                      className="card-base group hover:shadow-card-hover transition-all flex flex-col sm:flex-row relative overflow-hidden"
+                    >
+                      <div className="sm:w-64 aspect-[16/9] sm:aspect-auto flex-shrink-0 overflow-hidden relative">
+                        <img
+                          src={course.thumbnail}
+                          alt={course.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                          onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
+                        />
+                        {isEnrolled && (
+                          <div className="absolute top-2 left-2">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-sm">
+                              <CheckCircle2 className="w-3 h-3" /> Enrolled
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      <h3 className="font-bold text-heading text-lg mb-2 group-hover:text-primary transition-colors">
-                        {course.title}
-                      </h3>
-                      <p className="text-sm text-body line-clamp-2 mb-3 flex-1">{course.shortDescription}</p>
-                      <div className="flex items-center gap-4 text-sm text-muted mb-3">
-                        <span className="flex items-center gap-1">
-                          <Star className="w-4 h-4 fill-warning text-warning" />
-                          <span className="font-medium text-heading">{course.rating}</span>
-                          ({course.reviewCount})
-                        </span>
-                        <span>{course.cpdPoints} CPD points</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xl font-bold text-primary">
-                          £{course.salePrice || course.price}
-                        </span>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={(e) => { e.preventDefault(); handleAddToCart(course); }}
-                            className="p-2 rounded-button bg-primary text-white hover:bg-primary-hover"
-                          >
-                            <ShoppingCart className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => { e.preventDefault(); toggle(course.id); }}
-                            className="p-2 rounded-button border border-border hover:bg-bg-light"
-                          >
-                            <Heart className={`w-4 h-4 ${isWishlisted(course.id) ? 'fill-primary text-primary' : 'text-muted'}`} />
-                          </button>
+                      <div className="p-5 flex-1 flex flex-col">
+                        <div className="flex items-center gap-2 text-xs text-muted mb-2">
+                          <span className="font-medium text-primary">{course.category}</span>
+                          <span>•</span>
+                          <span>{course.level}</span>
+                          <span>•</span>
+                          <span>{course.duration}</span>
                         </div>
+                        <h3 className="font-bold text-heading text-lg mb-2 group-hover:text-primary transition-colors">
+                          {course.title}
+                        </h3>
+                        <p className="text-sm text-body line-clamp-2 mb-3 flex-1">{course.shortDescription}</p>
+                        <div className="flex items-center gap-4 text-sm text-muted mb-3">
+                          <span className="flex items-center gap-1">
+                            <Star className="w-4 h-4 fill-warning text-warning" />
+                            <span className="font-medium text-heading">{course.rating}</span>
+                            ({course.reviewCount})
+                          </span>
+                          <span>{course.cpdPoints} CPD points</span>
+                        </div>
+
+                        {isEnrolled ? (
+                          <div className="flex items-center justify-between pt-3 border-t border-border">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
+                              <CheckCircle2 className="w-4 h-4" /> Active Access
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  navigate(`/portal/player/${course.slug}`);
+                                }}
+                                className="px-4 py-2 rounded-button bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors"
+                              >
+                                <Play className="w-3.5 h-3.5 fill-current" />
+                                <span>Start Learning</span>
+                              </button>
+                              <button
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(course.id); }}
+                                className="p-2 rounded-button border border-border hover:bg-bg-light"
+                              >
+                                <Heart className={`w-4 h-4 ${isWishlisted(course.id) ? 'fill-primary text-primary' : 'text-muted'}`} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between pt-3 border-t border-border">
+                            <span className="text-xl font-bold text-primary">
+                              £{course.salePrice || course.price}
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={(e) => { e.preventDefault(); handleAddToCart(course); }}
+                                className="p-2 rounded-button bg-primary text-white hover:bg-primary-hover transition-colors"
+                                aria-label="Add to cart"
+                              >
+                                <ShoppingCart className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.preventDefault(); toggle(course.id); }}
+                                className="p-2 rounded-button border border-border hover:bg-bg-light transition-colors"
+                                aria-label="Wishlist"
+                              >
+                                <Heart className={`w-4 h-4 ${isWishlisted(course.id) ? 'fill-primary text-primary' : 'text-muted'}`} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             )}
 

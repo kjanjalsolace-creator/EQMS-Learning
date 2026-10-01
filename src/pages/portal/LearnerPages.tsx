@@ -26,27 +26,60 @@ const SIDEBAR = [
 export function MyLearningPage() {
   const { user } = useAuthStore();
   const { enrolments } = useAppDataStore();
-  const [tab, setTab] = useState('in_progress');
+  const [tab, setTab] = useState<'all' | 'in_progress' | 'not_started' | 'completed'>('all');
 
   if (!user) return <Navigate to="/login" />;
 
   const userEnrolments = enrolments.filter((e) => e.userId === user.id);
-  const filtered = userEnrolments.filter((e) => e.status === tab);
+  const inProgressCount = userEnrolments.filter((e) => e.status === 'in_progress').length;
+  const notStartedCount = userEnrolments.filter((e) => e.status === 'not_started').length;
+  const completedCount = userEnrolments.filter((e) => e.status === 'completed').length;
+
+  const filtered = tab === 'all'
+    ? userEnrolments
+    : userEnrolments.filter((e) => e.status === tab);
 
   const tabs = [
-    { id: 'in_progress', label: 'In Progress' },
-    { id: 'not_started', label: 'Not Started' },
-    { id: 'completed', label: 'Completed' },
+    { id: 'all' as const, label: 'All Courses', count: userEnrolments.length },
+    { id: 'not_started' as const, label: 'Not Started', count: notStartedCount },
+    { id: 'in_progress' as const, label: 'In Progress', count: inProgressCount },
+    { id: 'completed' as const, label: 'Completed', count: completedCount },
   ];
 
   return (
     <PortalLayout title="My Learning" sidebarItems={SIDEBAR} activePath="/portal/my-learning">
       <div className="space-y-6">
-        <div className="flex gap-2 border-b border-border">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-heading">My Enrolled Courses</h2>
+            <p className="text-xs text-muted">Access your active certifications and course modules</p>
+          </div>
+          <Link to="/courses">
+            <Button variant="outline" size="sm">
+              + Browse More Courses
+            </Button>
+          </Link>
+        </div>
+
+        <div className="flex gap-2 border-b border-border overflow-x-auto pb-px">
           {tabs.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`px-4 py-3 text-sm font-medium relative ${tab === t.id ? 'text-primary' : 'text-body hover:text-heading'}`}>
-              {t.label}
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-4 py-3 text-sm font-medium relative whitespace-nowrap flex items-center gap-2 ${
+                tab === t.id ? 'text-primary' : 'text-body hover:text-heading'
+              }`}
+            >
+              <span>{t.label}</span>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full ${
+                  tab === t.id
+                    ? 'bg-primary/10 text-primary font-bold'
+                    : 'bg-bg-light text-muted'
+                }`}
+              >
+                {t.count}
+              </span>
               {tab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
             </button>
           ))}
@@ -55,28 +88,99 @@ export function MyLearningPage() {
         {filtered.length === 0 ? (
           <Card className="p-12 text-center">
             <BookOpen className="w-12 h-12 text-muted mx-auto mb-4" />
-            <p className="text-body mb-4">No courses here yet.</p>
-            <Link to="/courses"><Button variant="primary">Browse Courses</Button></Link>
+            <h3 className="font-bold text-heading text-lg mb-1">No courses found in this tab</h3>
+            <p className="text-body text-sm mb-6">
+              {tab === 'all'
+                ? "You haven't enrolled in any courses yet. Browse our accredited catalog to get started."
+                : `You don't have any courses marked as ${tabs.find((t) => t.id === tab)?.label.toLowerCase()}.`}
+            </p>
+            <Link to="/courses">
+              <Button variant="primary">Browse Course Catalog</Button>
+            </Link>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((enr) => {
               const course = COURSES.find((c) => c.id === enr.courseId);
               if (!course) return null;
               return (
-                <Card key={enr.id} className="overflow-hidden hover:shadow-card-hover transition-all">
-                  <Link to={`/portal/player/${course.slug}`}>
-                    <div className="aspect-[16/9] overflow-hidden">
-                      <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }} />
+                <Card
+                  key={enr.id}
+                  className="overflow-hidden hover:shadow-card-hover transition-all flex flex-col group border border-border"
+                >
+                  <Link to={`/portal/player/${course.slug}`} className="relative aspect-[16/9] overflow-hidden block">
+                    <img
+                      src={course.thumbnail}
+                      alt={course.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
+                    />
+                    <div className="absolute top-2 left-2 flex gap-1.5">
+                      <Badge variant="primary" className="bg-primary/90 text-white text-[11px]">{course.category}</Badge>
                     </div>
-                    <div className="p-4">
-                      <Badge variant="primary">{course.category}</Badge>
-                      <h3 className="font-bold text-heading text-sm mt-2 mb-2 line-clamp-2">{course.title}</h3>
-                      <ProgressBar value={enr.progress} className="mb-2" />
-                      <p className="text-xs text-muted">{enr.progress}% complete • {course.duration}</p>
+                    <div className="absolute top-2 right-2">
+                      {enr.status === 'completed' && (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white shadow-sm flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Completed
+                        </span>
+                      )}
+                      {enr.status === 'in_progress' && (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-white shadow-sm flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> In Progress
+                        </span>
+                      )}
+                      {enr.status === 'not_started' && (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-white shadow-sm flex items-center gap-1">
+                          <Play className="w-2.5 h-2.5 fill-current" /> Ready
+                        </span>
+                      )}
                     </div>
                   </Link>
+
+                  <div className="p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 text-xs text-muted mb-1.5">
+                        <span>{course.level}</span>
+                        <span>•</span>
+                        <span>{course.duration}</span>
+                        <span>•</span>
+                        <span>{course.cpdPoints} CPD pts</span>
+                      </div>
+                      <Link to={`/portal/player/${course.slug}`}>
+                        <h3 className="font-bold text-heading text-sm mb-3 line-clamp-2 hover:text-primary transition-colors">
+                          {course.title}
+                        </h3>
+                      </Link>
+                    </div>
+
+                    <div>
+                      <div className="space-y-1.5 mb-3">
+                        <div className="flex justify-between text-xs text-muted">
+                          <span>Progress</span>
+                          <span className="font-bold text-heading">{enr.progress}%</span>
+                        </div>
+                        <ProgressBar value={enr.progress} className="h-2" />
+                      </div>
+
+                      <Link to={`/portal/player/${course.slug}`} className="block">
+                        <Button
+                          variant={enr.status === 'completed' ? 'outline' : 'primary'}
+                          size="sm"
+                          fullWidth
+                          className={enr.status !== 'completed' ? 'bg-emerald-600 hover:bg-emerald-700 text-white font-medium flex items-center justify-center gap-1.5' : 'flex items-center justify-center gap-1.5'}
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>
+                            {enr.status === 'completed'
+                              ? 'Review Lessons'
+                              : enr.status === 'in_progress'
+                              ? 'Continue Learning'
+                              : 'Start Course'}
+                          </span>
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
                 </Card>
               );
             })}
@@ -90,7 +194,7 @@ export function MyLearningPage() {
 export function CoursePlayerPage() {
   const { slug } = useParams();
   const { user } = useAuthStore();
-  const { enrolments, updateEnrolment, addCertificate, addNotification } = useAppDataData();
+  const { enrolments, updateEnrolment, addCertificate, addNotification } = useAppDataStore();
   const course = COURSES.find((c) => c.slug === slug);
 
   const [currentModuleIdx, setCurrentModuleIdx] = useState(0);
@@ -314,8 +418,6 @@ export function CoursePlayerPage() {
     </PortalLayout>
   );
 }
-
-import { useAppDataStore as useAppDataData } from '@/context/AppDataContext';
 
 export function CertificatesPage() {
   const { user } = useAuthStore();
