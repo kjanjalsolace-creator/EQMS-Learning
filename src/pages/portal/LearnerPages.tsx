@@ -3,14 +3,20 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { Card, Badge, ProgressBar } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { useAuthStore } from '@/context/AuthContext';
 import { useAppDataStore } from '@/context/AppDataContext';
+import { useWishlistStore } from '@/context/WishlistContext';
+import { useCartStore } from '@/context/CartContext';
+import { useToastStore } from '@/context/ToastContext';
+import { downloadDemoCertificate } from '@/utils/downloadCertificate';
 import { COURSES } from '@/data/seed';
 import { FALLBACK_IMAGE } from '@/data/assets';
 import type { Enrolment } from '@/types';
 import {
-  BookOpen, Award, Heart, Bell, User, FileText, CheckCircle2, Lock,
+  BookOpen, Award, Heart, Bell, User, FileText, Lock,
   Play, ChevronLeft, ChevronRight, Clock, FileText as FileIcon, BarChart3,
+  Download, Trash2, ShoppingCart, Star, CheckCircle2,
 } from 'lucide-react';
 
 const SIDEBAR = [
@@ -421,42 +427,110 @@ export function CoursePlayerPage() {
 
 export function CertificatesPage() {
   const { user } = useAuthStore();
-  const { certificates } = useAppDataStore();
+  const { certificates, addCertificate } = useAppDataStore();
+  const { show } = useToastStore();
 
   if (!user) return <Navigate to="/login" />;
 
   const userCerts = certificates.filter((c) => c.userId === user.id);
 
+  const handleDownload = (cert: any) => {
+    downloadDemoCertificate({
+      userName: cert.userName || `${user.firstName} ${user.lastName}`,
+      courseTitle: cert.courseTitle,
+      certificateId: cert.certificateId,
+      issueDate: cert.issueDate,
+      expiryDate: cert.expiryDate,
+      score: cert.score || 95,
+      cpdHours: '2.5 CPD Hours',
+    });
+    show('success', `Certificate for "${cert.courseTitle}" downloaded!`);
+  };
+
+  const handleDownloadGenericDemo = () => {
+    const demoId = `CPD-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+    downloadDemoCertificate({
+      userName: `${user.firstName} ${user.lastName}`,
+      courseTitle: 'Asbestos Awareness (Category A)',
+      certificateId: demoId,
+      issueDate: new Date().toISOString(),
+      score: 98,
+      cpdHours: '3.0 CPD Hours',
+    });
+    show('success', `Demo CPD Certificate (${demoId}) downloaded!`);
+  };
+
   return (
     <PortalLayout title="Certificates" sidebarItems={SIDEBAR} activePath="/portal/certificates">
       <div className="space-y-6">
-        <div>
-          <h2 className="text-xl font-bold text-heading">My Certificates</h2>
-          <p className="text-muted text-sm">Download and share your course completion certificates.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-heading">My Certificates</h2>
+            <p className="text-muted text-sm">Download your accredited CPD completion certificates.</p>
+          </div>
+          <div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleDownloadGenericDemo}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download Demo Certificate
+            </Button>
+          </div>
         </div>
+
         {userCerts.length === 0 ? (
           <Card className="p-12 text-center">
-            <Award className="w-12 h-12 text-muted mx-auto mb-4" />
-            <p className="text-body mb-4">No certificates yet. Complete a course to earn your certificate.</p>
-            <Link to="/portal/my-learning"><Button variant="primary">My Learning</Button></Link>
+            <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4 ring-1 ring-emerald-200">
+              <Award className="w-8 h-8" />
+            </div>
+            <h3 className="font-bold text-heading text-lg mb-1">No Certificates Issued Yet</h3>
+            <p className="text-body text-sm mb-6 max-w-md mx-auto">
+              Complete any enrolled course with a passing assessment score to receive an official accredited CPD certificate, or download a demo certificate below.
+            </p>
+            <div className="flex items-center justify-center">
+              <Button
+                variant="primary"
+                onClick={handleDownloadGenericDemo}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Download Demo Certificate
+              </Button>
+            </div>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {userCerts.map((cert) => (
-              <Card key={cert.id} className="p-6">
+              <Card key={cert.id} className="p-6 border border-border hover:shadow-card-hover transition-all">
                 <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-card bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Award className="w-7 h-7 text-primary" />
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                    <Award className="w-7 h-7 text-emerald-600" />
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-heading text-sm">{cert.courseTitle}</h3>
-                    <p className="text-xs text-muted mt-1">Certificate ID: {cert.certificateId}</p>
-                    <p className="text-xs text-muted">Issued: {new Date(cert.issueDate).toLocaleDateString('en-GB')}</p>
-                    <p className="text-xs text-muted">Expires: {new Date(cert.expiryDate).toLocaleDateString('en-GB')}</p>
-                    <p className="text-xs text-success mt-1">Score: {cert.score}%</p>
-                    <div className="flex gap-2 mt-3">
-                      <Button variant="primary" size="sm">Download</Button>
-                      <Link to={`/verify/${cert.certificateId}`}><Button variant="outline" size="sm">Verify</Button></Link>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="success" className="text-[10px] py-0 px-1.5">CPD Approved</Badge>
+                      <span className="text-xs text-muted font-mono">{cert.certificateId}</span>
+                    </div>
+                    <h3 className="font-bold text-heading text-base line-clamp-1">{cert.courseTitle}</h3>
+                    <div className="text-xs text-muted space-y-0.5 mt-2">
+                      <p>Recipient: <strong className="text-heading">{cert.userName}</strong></p>
+                      <p>Issued: {new Date(cert.issueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                      <p>Valid until: {new Date(cert.expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                      <p className="text-emerald-700 font-semibold mt-1">Pass Score: {cert.score}% (Distinction)</p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-border">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleDownload(cert)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1.5"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Download Certificate
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -527,16 +601,153 @@ export function OrdersPage() {
 
 export function WishlistPage() {
   const { user } = useAuthStore();
-  const { useWishlistStore } = { useWishlistStore: null };
+  const { courseIds, remove } = useWishlistStore();
+  const { addItem } = useCartStore();
+  const { show } = useToastStore();
+
+  if (!user) return <Navigate to="/login" />;
+
+  const wishlistedCourses = COURSES.filter((c) => courseIds.includes(c.id));
+
+  const handleAddToCart = (course: any) => {
+    addItem({
+      courseId: course.id,
+      title: course.title,
+      thumbnail: course.thumbnail,
+      price: course.salePrice || course.price,
+      quantity: 1,
+      teamPurchase: false,
+    });
+    show('success', `${course.title} added to cart`);
+  };
+
+  const handleRemove = (courseId: string, title: string) => {
+    remove(courseId);
+    show('info', `${title} removed from wishlist`);
+  };
+
   return (
     <PortalLayout title="Wishlist" sidebarItems={SIDEBAR} activePath="/portal/wishlist">
       <div className="space-y-6">
-        <h2 className="text-xl font-bold text-heading">My Wishlist</h2>
-        <Card className="p-12 text-center">
-          <Heart className="w-12 h-12 text-muted mx-auto mb-4" />
-          <p className="text-body mb-4">Your wishlist is empty.</p>
-          <Link to="/courses"><Button variant="primary">Browse Courses</Button></Link>
-        </Card>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-heading">My Wishlist</h2>
+            <p className="text-muted text-sm">
+              {wishlistedCourses.length === 0
+                ? 'Save courses you are interested in to review and purchase later.'
+                : `You have saved ${wishlistedCourses.length} course${wishlistedCourses.length === 1 ? '' : 's'} to your wishlist.`}
+            </p>
+          </div>
+          <Link to="/courses">
+            <Button variant="outline" size="sm">
+              + Browse More Courses
+            </Button>
+          </Link>
+        </div>
+
+        {wishlistedCourses.length === 0 ? (
+          <Card className="p-12 text-center">
+            <Heart className="w-12 h-12 text-muted mx-auto mb-4" />
+            <h3 className="font-bold text-heading text-lg mb-1">Your Wishlist is Empty</h3>
+            <p className="text-body text-sm mb-6 max-w-md mx-auto">
+              Browse our accredited compliance and vocational training courses. Click the heart icon on any course card to bookmark it here.
+            </p>
+            <Link to="/courses">
+              <Button variant="primary">Explore Course Catalog</Button>
+            </Link>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {wishlistedCourses.map((course) => {
+              const displayPrice = course.salePrice || course.price;
+              return (
+                <Card
+                  key={course.id}
+                  className="overflow-hidden hover:shadow-card-hover transition-all flex flex-col group border border-border"
+                >
+                  <Link to={`/courses/${course.slug}`} className="relative aspect-[16/9] overflow-hidden block">
+                    <img
+                      src={course.thumbnail}
+                      alt={course.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
+                    />
+                    <div className="absolute top-2 left-2 flex gap-1">
+                      <Badge variant="primary" className="bg-primary/90 text-white text-[11px]">{course.category}</Badge>
+                      {course.cpdApproved && (
+                        <Badge variant="neutral" className="bg-white/90 text-heading text-[11px]">CPD</Badge>
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleRemove(course.id, course.title);
+                      }}
+                      className="absolute top-2 right-2 p-2 rounded-full bg-white/90 hover:bg-white text-error shadow-card transition-all"
+                      title="Remove from wishlist"
+                    >
+                      <Heart className="w-4 h-4 fill-primary text-primary" />
+                    </button>
+                  </Link>
+
+                  <div className="p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 text-xs text-muted mb-2">
+                        <span>{course.level}</span>
+                        <span>•</span>
+                        <span>{course.duration}</span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Star className="w-3.5 h-3.5 fill-warning text-warning" />
+                          <span className="font-semibold text-heading">{course.rating}</span>
+                        </span>
+                      </div>
+                      <Link to={`/courses/${course.slug}`}>
+                        <h3 className="font-bold text-heading text-sm mb-2 line-clamp-2 hover:text-primary transition-colors">
+                          {course.title}
+                        </h3>
+                      </Link>
+                      <p className="text-xs text-body line-clamp-2 mb-3">
+                        {course.shortDescription}
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
+                      <div className="flex items-baseline gap-1">
+                        {course.salePrice && (
+                          <span className="text-xs text-muted line-through">£{course.price}</span>
+                        )}
+                        <span className="text-base font-bold text-primary">£{displayPrice}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleAddToCart(course)}
+                          className="text-xs flex items-center gap-1.5"
+                        >
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          Add to Cart
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemove(course.id, course.title)}
+                          className="text-error hover:bg-error-light p-2 h-8 w-8"
+                          title="Remove"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
     </PortalLayout>
   );
@@ -647,6 +858,3 @@ export function ProfilePage() {
     </PortalLayout>
   );
 }
-
-import { Input } from '@/components/ui/Input';
-import { useToastStore } from '@/context/ToastContext';

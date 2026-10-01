@@ -237,16 +237,28 @@ export function CoursesPage() {
                   <option value="price-high">Price: High to Low</option>
                   <option value="rating">Highest Rated</option>
                 </Select>
-                <div className="flex border border-border rounded-button overflow-hidden">
+                <div className="inline-flex items-center p-1 bg-slate-100 rounded-lg border border-slate-200">
                   <button
                     onClick={() => setView('grid')}
-                    className={`p-2 ${view === 'grid' ? 'bg-primary text-white' : 'text-muted hover:bg-bg-light'}`}
+                    className={`flex items-center justify-center w-8 h-8 rounded-md transition-all ${
+                      view === 'grid'
+                        ? 'bg-white text-primary shadow-xs font-semibold'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                    title="Grid view"
+                    aria-label="Grid view"
                   >
                     <Grid3x3 className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setView('list')}
-                    className={`p-2 ${view === 'list' ? 'bg-primary text-white' : 'text-muted hover:bg-bg-light'}`}
+                    className={`flex items-center justify-center w-8 h-8 rounded-md transition-all ${
+                      view === 'list'
+                        ? 'bg-white text-primary shadow-xs font-semibold'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                    title="List view"
+                    aria-label="List view"
                   >
                     <List className="w-4 h-4" />
                   </button>

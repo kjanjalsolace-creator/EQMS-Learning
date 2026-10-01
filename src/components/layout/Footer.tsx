@@ -40,12 +40,16 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand Column */}
           <div className="lg:col-span-1">
-            <img
-              src={ASSETS.logo}
-              alt="EQMS Training"
-              className="h-10 w-auto mb-4 brightness-0 invert"
-              onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
-            />
+            <Link to="/" className="inline-block mb-4">
+              <div className="bg-white rounded-md px-3 py-1.5 inline-flex items-center shadow-sm hover:opacity-95 transition-opacity">
+                <img
+                  src={ASSETS.logo}
+                  alt="EQMS Training"
+                  className="h-9 w-auto object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).src = FALLBACK_IMAGE; }}
+                />
+              </div>
+            </Link>
             <p className="text-sm text-white/70 leading-relaxed mb-6">
               Professional online training designed for real workplaces. Our courses are available
               online 24/7 on most devices, CPD-approved, and developed to support compliance and
